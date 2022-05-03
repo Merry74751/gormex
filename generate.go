@@ -24,7 +24,7 @@ func generateSelect[T any]() string {
 	return builder.String()
 }
 
-func generateCreate(v any) (string, int, []any) {
+func generateInsert(v any) (string, []any) {
 	columns, length, values := ColumnsNotNil(v)
 
 	tableName := TableName(v)
@@ -54,5 +54,5 @@ func generateCreate(v any) (string, int, []any) {
 		builder.WriteString(",")
 	}
 
-	return builder.String(), length, values
+	return builder.String(), values
 }
