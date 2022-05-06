@@ -2,28 +2,6 @@ package gorm_expand
 
 import "strings"
 
-func generateSelect[T any]() string {
-	v := new(T)
-	builder := strings.Builder{}
-	builder.WriteString("select ")
-	columns := Columns(v)
-	length := len(columns)
-
-	for i, column := range columns {
-		builder.WriteString(column)
-
-		if i == length-1 {
-			builder.WriteString(" from ")
-			builder.WriteString(TableName(v))
-			break
-		}
-
-		builder.WriteString(",")
-	}
-
-	return builder.String()
-}
-
 func generateInsert(v any) (string, []any) {
 	columns, length, values := ColumnsNotNil(v)
 

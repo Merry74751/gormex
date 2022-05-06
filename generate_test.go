@@ -2,14 +2,9 @@ package gorm_expand
 
 import "testing"
 
-func TestGenerateSelect(t *testing.T) {
-	s := generateSelect[User]()
-	t.Log(s)
-}
-
 func TestGenerateCreate(t *testing.T) {
 	u := User{Username: "zhangsan", Age: 18}
-	s, _, _ := generateCreate(u)
+	s, _ := generateInsert(u)
 	t.Log(s)
 
 }

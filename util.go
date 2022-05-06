@@ -8,11 +8,25 @@ import (
 )
 
 func getColumn(field reflect.StructField) string {
-	column := field.Tag.Get("column")
+	column := parseTag(field.Tag)
 	if str.IsEmpty(column) {
 		column = strings.ToLower(field.Name)
 	}
 	return column
+}
+
+func parseTag(tag reflect.StructTag) string {
+	v := tag.Get("gorm")
+	if str.IsNotEmpty(v) {
+		s := strings.Split(v, ";")
+		for _, item := range s {
+			s1 := strings.Split(item, ":")
+			if s1[0] == "column" {
+				return s1[1]
+			}
+		}
+	}
+	return ""
 }
 
 func Columns(v any) []string {
