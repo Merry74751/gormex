@@ -77,6 +77,10 @@ func (m Mapper[T]) GetDb() *gorm.DB {
 	return m.db
 }
 
+func (m Mapper[T]) SetDb(db *gorm.DB) {
+	m.db = db
+}
+
 func (m Mapper[T]) Insert(t T) error {
 	sql, params := generateInsert(t)
 	err := m.db.Exec(sql, params...).Error
