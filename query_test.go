@@ -105,14 +105,11 @@ func connection() *gorm.DB {
 	return db
 }
 
-func TestName(t *testing.T) {
-	db := connection()
-	go print(db)
-	go print(db)
-	time.Sleep(time.Second * 3)
-}
+func TestPage(t *testing.T) {
+	c := connection()
+	m := Mapper[Users]{c}
 
-func print(db *gorm.DB) {
-	time.Sleep(time.Second)
-	println(db)
+	page, total, _ := m.Page(Page{Current: 1, PageSize: 1})
+	t.Log(page)
+	t.Log(total)
 }

@@ -142,11 +142,30 @@ func (m Mapper[T]) ListByCondition(t T, condition queryCondition) ([]T, error) {
 }
 
 func (m Mapper[T]) Page(page Page) ([]T, int64, error) {
-	columns := Columns(new(T))
+	t := new(T)
+	var total int64
+	m.db.Model(t).Count(&total)
+
+	columns := Columns(t)
 	m.db = m.db.Select(columns)
 
+	var result []T
+	current := (page.Current - 1) * page.PageSize
+	err := m.db.Offset(current).Limit(page.PageSize).Find(&result).Error
+	return result, total, err
+}
+
+func (m Mapper[T]) PageByCondition(t T, condition queryCondition, page Page) ([]T, int64, error) {
+	v := new(T)
+
 	var total int64
-	m.db.Count(&total)
+	m.db.Model(v).Count(&total)
+
+	columns := Columns(v)
+	m.db = m.db.Select(columns)
+
+	entityToCondition(t, m.db)
+	parseCondition(condition, m.db)
 
 	var result []T
 	current := (page.Current - 1) * page.PageSize
