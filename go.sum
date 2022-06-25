@@ -1,5 +1,5 @@
-github.com/Merry74751/yutool v0.0.1 h1:c7XpiNcDrsVxYbQQI/HVw52aaCdPLcHeV/vHtUBV7Xo=
-github.com/Merry74751/yutool v0.0.1/go.mod h1:pnvurJbYlrEDeWMiiNuoe/VflXGC8x3Hbc3xAxrfHG0=
+github.com/Merry74751/yutool v0.0.3 h1:3tBiLV3R17oVnYDJkHSTRsd3PTU00RxwDdm9s5ypZeg=
+github.com/Merry74751/yutool v0.0.3/go.mod h1:pnvurJbYlrEDeWMiiNuoe/VflXGC8x3Hbc3xAxrfHG0=
 github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=

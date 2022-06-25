@@ -10,7 +10,7 @@ import (
 func getColumn(field reflect.StructField) string {
 	column := parseTag(field.Tag)
 	if str.IsEmpty(column) {
-		column = strings.ToLower(field.Name)
+		column = toUnderLineCase(column)
 	}
 	return column
 }
@@ -78,4 +78,44 @@ func ColumnsNotNil(v any) ([]string, int, []any) {
 	}
 
 	return columns, length, values
+}
+
+func endWith(src, s string) bool {
+	srcLen := len(src)
+	sLen := len(s)
+
+	if srcLen == 0 || sLen == 0 {
+		return false
+	}
+	if srcLen < sLen {
+		return false
+	}
+
+	for i := 1; i <= sLen; i++ {
+		if src[srcLen-i] != s[sLen-i] {
+			return false
+		}
+	}
+	return true
+}
+
+func toUnderLineCase(s string) string {
+	if str.IsEmpty(s) {
+		return ""
+	}
+	sb := strings.Builder{}
+	sb.Grow(len(s))
+	for i, item := range s {
+		if i == 0 && 65 <= item && item <= 90 {
+			sb.WriteByte(byte(item + 32))
+			continue
+		}
+		if 65 <= item && item <= 90 {
+			sb.WriteByte(95)
+			sb.WriteByte(byte(item + 32))
+			continue
+		}
+		sb.WriteByte(byte(item))
+	}
+	return sb.String()
 }

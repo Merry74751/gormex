@@ -48,19 +48,6 @@ func TestSelectById(t *testing.T) {
 	t.Log(u)
 }
 
-func TestSelectByEntity(t *testing.T) {
-	db := connection()
-	m := Mapper[Users]{db}
-	u := Users{Name: "zhangsan"}
-	q := NewQueryCondition()
-	q.Gt("id", 1)
-	users, err := m.Get(u, q)
-	if err != nil {
-		t.Log(err)
-	}
-	t.Log(users)
-}
-
 func TestUpdate(t *testing.T) {
 	db := connection()
 	m := Mapper[Users]{db}

@@ -1,68 +1,15 @@
 package gorm_expand
 
 import (
+	"fmt"
 	"github.com/Merry74751/yutool/anyutil"
+	"github.com/Merry74751/yutool/common"
+	"github.com/Merry74751/yutool/str"
 	"gorm.io/gorm"
+	"reflect"
+	"strings"
+	"time"
 )
-
-type condition interface {
-	// Eq 等于
-	Eq(column string, value any)
-	// Ne 不等于
-	Ne(column string, value any)
-	// Lt 小于
-	Lt(column string, value any)
-	// Le 小于等于
-	Le(column string, value any)
-	// Gt 大于
-	Gt(column string, value any)
-	// Ge 大于等于
-	Ge(column string, value any)
-}
-
-type queryCondition struct {
-	params map[string]any
-}
-
-func NewQueryCondition() queryCondition {
-	q := queryCondition{}
-	q.params = make(map[string]any)
-	return q
-}
-
-func EmptyCondition() queryCondition {
-	return queryCondition{}
-}
-
-func (q queryCondition) Eq(column string, value any) {
-	key := column + "=?"
-	q.params[key] = value
-}
-
-func (q queryCondition) Ne(column string, value any) {
-	key := column + "<> ? "
-	q.params[key] = value
-}
-
-func (q queryCondition) Lt(column string, value any) {
-	key := column + "< ?"
-	q.params[key] = value
-}
-
-func (q queryCondition) Le(column string, value any) {
-	key := column + "<= ?"
-	q.params[key] = value
-}
-
-func (q queryCondition) Gt(column string, value any) {
-	key := column + "> ?"
-	q.params[key] = value
-}
-
-func (q queryCondition) Ge(column string, value any) {
-	key := column + ">= ?"
-	q.params[key] = value
-}
 
 type Page struct {
 	Current  int
@@ -83,6 +30,7 @@ func (m Mapper[T]) SetDb(db *gorm.DB) {
 
 func (m Mapper[T]) Insert(t T) error {
 	sql, params := generateInsert(t)
+	setInsertField(t)
 	err := m.db.Exec(sql, params...).Error
 	return err
 }
@@ -90,9 +38,9 @@ func (m Mapper[T]) Insert(t T) error {
 func (m Mapper[T]) GetById(id any) (T, error) {
 	value := new(T)
 	columns := Columns(value)
-	m.db = m.db.Select(columns)
+	tx := m.db.Select(columns)
 
-	err := m.db.Where(columns[0]+"=?", id).Find(value).Error
+	err := tx.Where(columns[0]+"=?", id).Find(value).Error
 	return *value, err
 }
 
@@ -104,40 +52,39 @@ func (m Mapper[T]) DeleteById(id any) error {
 }
 
 func (m Mapper[T]) UpdateById(t T) error {
+	setUpdateField(t)
 	err := m.db.Updates(t).Error
 	return err
 }
 
-func (m Mapper[T]) Get(t T, queryCondition queryCondition) (T, error) {
+func (m Mapper[T]) Get(t T) (T, error) {
 	result := new(T)
 	columns := Columns(result)
-	m.db = m.db.Select(columns)
+	tx := m.db.Select(columns)
 
-	entityToCondition(t, m.db)
-	parseCondition(queryCondition, m.db)
+	entityToCondition(t, tx)
 
-	err := m.db.Find(result).Error
+	err := tx.Find(result).Error
 	return *result, err
 }
 
 func (m Mapper[T]) List() ([]T, error) {
 	columns := Columns(new(T))
-	m.db = m.db.Select(columns)
+	tx := m.db.Select(columns)
 
 	var result []T
-	err := m.db.Find(&result).Error
+	err := tx.Find(&result).Error
 	return result, err
 }
 
-func (m Mapper[T]) ListByCondition(t T, condition queryCondition) ([]T, error) {
+func (m Mapper[T]) ListByCondition(t T) ([]T, error) {
 	columns := Columns(new(T))
-	m.db = m.db.Select(columns)
+	tx := m.db.Select(columns)
 
 	var result []T
-	entityToCondition(t, m.db)
-	parseCondition(condition, m.db)
+	entityToCondition(t, tx)
 
-	err := m.db.Find(&result).Error
+	err := tx.Find(&result).Error
 	return result, err
 }
 
@@ -147,50 +94,99 @@ func (m Mapper[T]) Page(page Page) ([]T, int64, error) {
 	m.db.Model(t).Count(&total)
 
 	columns := Columns(t)
-	m.db = m.db.Select(columns)
+	tx := m.db.Select(columns)
 
 	var result []T
 	current := (page.Current - 1) * page.PageSize
-	err := m.db.Offset(current).Limit(page.PageSize).Find(&result).Error
+	err := tx.Offset(current).Limit(page.PageSize).Find(&result).Error
 	return result, total, err
 }
 
-func (m Mapper[T]) PageByCondition(t T, condition queryCondition, page Page) ([]T, int64, error) {
+func (m Mapper[T]) PageByCondition(t T, page Page) ([]T, int64, error) {
 	v := new(T)
 
 	var total int64
 	m.db.Model(v).Count(&total)
 
 	columns := Columns(v)
-	m.db = m.db.Select(columns)
+	tx := m.db.Select(columns)
 
-	entityToCondition(t, m.db)
-	parseCondition(condition, m.db)
+	entityToCondition(t, tx)
 
 	var result []T
 	current := (page.Current - 1) * page.PageSize
-	err := m.db.Offset(current).Limit(page.PageSize).Find(&result).Error
+	err := tx.Offset(current).Limit(page.PageSize).Find(&result).Error
 	return result, total, err
 }
 
 func entityToCondition(t any, db *gorm.DB) {
 	if anyutil.IsNotNil(t) {
-		fields := anyutil.Fields(t)
-		for i, field := range fields {
-			if field.IsZero() {
-				continue
-			}
-			structField := anyutil.StructField(t, i)
-			column := getColumn(structField)
-			db = db.Where(column+"=?", field.Interface())
+		v := anyutil.Value(t)
+		valueToCondition(v, db)
+	}
+}
+
+func valueToCondition(v reflect.Value, db *gorm.DB) {
+	typ := v.Type()
+	numField := v.NumField()
+	for i := 0; i < numField; i++ {
+		field := v.Field(i)
+		if field.IsZero() {
+			continue
+		}
+		if field.Kind() == reflect.Struct {
+			valueToCondition(field, db)
+		}
+		structField := typ.Field(i)
+		name := structField.Name
+		tagColumn := parseTag(structField.Tag)
+		if strings.HasSuffix(name, "GE") {
+			chooseColumn(name, tagColumn, ">= ?", 2, field.Interface(), db)
+		} else if strings.HasSuffix(name, "GT") {
+			chooseColumn(name, tagColumn, "> ?", 2, field.Interface(), db)
+		} else if strings.HasSuffix(name, "LE") {
+			chooseColumn(name, tagColumn, "<= ?", 2, field.Interface(), db)
+		} else if strings.HasSuffix(name, "LT") {
+			chooseColumn(name, tagColumn, "< ?", 2, field.Interface(), db)
+		} else if strings.HasSuffix(name, "NE") {
+			chooseColumn(name, tagColumn, "<> ?", 2, field.Interface(), db)
+		} else if strings.HasSuffix(name, "LikeLeft") {
+			value := fmt.Sprint(field.Interface()) + "%"
+			chooseColumn(name, tagColumn, "like ?", 8, value, db)
+		} else {
+			chooseColumn(name, tagColumn, "= ?", 0, field.Interface(), db)
 		}
 	}
 }
 
-func parseCondition(condition queryCondition, db *gorm.DB) {
-	if anyutil.IsNotNil(condition) {
-		for key, value := range condition.params {
-			db = db.Where(key, value)
-		}
+func chooseColumn(name, tagColumn, expression string, index int, value any, db *gorm.DB) {
+	if str.IsNotEmpty(tagColumn) {
+		db = db.Where(tagColumn+expression, value)
+	} else {
+		name = toUnderLineCase(name[0 : len(name)-index])
+		db = db.Where(name+expression, value)
+	}
+}
+
+func setInsertField(t any) {
+	v := anyutil.Value(t)
+	id := v.FieldByName("Id")
+	if (id != reflect.Value{}) {
+		snowflakeID := common.GetSnowflakeID()
+		id.Set(anyutil.Value(uint(snowflakeID)))
+	}
+
+	createTime := v.FieldByName("CreateTime")
+	if (createTime != reflect.Value{}) {
+		createTime.Set(anyutil.Value(time.Now()))
+	}
+}
+
+func setUpdateField(t any) {
+	v := anyutil.Value(t)
+	updateTime := v.FieldByName("UpdateTime")
+
+	if (updateTime != reflect.Value{}) {
+		updateTime.Set(anyutil.Value(time.Now()))
 	}
 }
