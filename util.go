@@ -3,6 +3,7 @@ package gorm_expand
 import (
 	"github.com/Merry74751/yutool/anyutil"
 	"github.com/Merry74751/yutool/str"
+	"gorm.io/gorm/schema"
 	"reflect"
 	"strings"
 )
@@ -42,12 +43,8 @@ func Columns(v any) []string {
 }
 
 func TableName(v any) string {
-	value := anyutil.Value(v)
-	method := value.MethodByName("TableName")
-
-	if method.IsValid() {
-		call := method.Call(nil)
-		return call[0].Interface().(string)
+	if table, ok := v.(schema.Tabler); ok {
+		return table.TableName()
 	}
 
 	structName := reflect.TypeOf(v).String()

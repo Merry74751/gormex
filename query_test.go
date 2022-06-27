@@ -69,7 +69,7 @@ func TestMapper_DeleteById(t *testing.T) {
 	m := Mapper[Users]{}
 	m.SetDb(connection())
 
-	err := m.DeleteById(1)
+	err := m.DeleteById(3)
 	if err != nil {
 		t.Log(err)
 	}

@@ -46,9 +46,12 @@ func (m Mapper[T]) GetById(id any) (T, error) {
 
 func (m Mapper[T]) DeleteById(id any) error {
 	t := new(T)
-	field := anyutil.StructField(t, 0)
-	column := getColumn(field)
-	return m.db.Where(column+"=?", id).Delete(t).Error
+	return m.db.Where("id = ?", id).Delete(t).Error
+}
+
+func (m Mapper[T]) DeleteByIds(ids []any) error {
+	t := new(T)
+	return m.db.Where("id = ?", ids).Delete(t).Error
 }
 
 func (m Mapper[T]) UpdateById(t T) error {
