@@ -24,13 +24,13 @@ func (m Mapper[T]) GetDb() *gorm.DB {
 	return m.db
 }
 
-func (m Mapper[T]) SetDb(db *gorm.DB) {
+func (m *Mapper[T]) SetDb(db *gorm.DB) {
 	m.db = db
 }
 
 func (m Mapper[T]) Insert(t T) error {
+	setInsertField(&t)
 	sql, params := generateInsert(t)
-	setInsertField(t)
 	err := m.db.Exec(sql, params...).Error
 	return err
 }
@@ -48,11 +48,11 @@ func (m Mapper[T]) DeleteById(id any) error {
 	t := new(T)
 	field := anyutil.StructField(t, 0)
 	column := getColumn(field)
-	return m.db.Where(column+"=?", id).Delete(field).Error
+	return m.db.Where(column+"=?", id).Delete(t).Error
 }
 
 func (m Mapper[T]) UpdateById(t T) error {
-	setUpdateField(t)
+	setUpdateField(&t)
 	err := m.db.Updates(t).Error
 	return err
 }
@@ -65,6 +65,9 @@ func (m Mapper[T]) Get(t T) (T, error) {
 	entityToCondition(t, tx)
 
 	err := tx.Find(result).Error
+	if anyutil.IsNil(result) {
+		err = gorm.ErrRecordNotFound
+	}
 	return *result, err
 }
 
@@ -172,8 +175,9 @@ func setInsertField(t any) {
 	v := anyutil.Value(t)
 	id := v.FieldByName("Id")
 	if (id != reflect.Value{}) {
-		snowflakeID := common.GetSnowflakeID()
-		id.Set(anyutil.Value(uint(snowflakeID)))
+		snowflakeID := uint(common.GetSnowflakeID())
+		value := reflect.ValueOf(snowflakeID)
+		id.Set(value)
 	}
 
 	createTime := v.FieldByName("CreateTime")

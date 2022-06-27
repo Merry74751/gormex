@@ -10,7 +10,7 @@ import (
 func getColumn(field reflect.StructField) string {
 	column := parseTag(field.Tag)
 	if str.IsEmpty(column) {
-		column = toUnderLineCase(column)
+		column = toUnderLineCase(field.Name)
 	}
 	return column
 }
@@ -61,8 +61,8 @@ func ColumnsNotNil(v any) ([]string, int, []any) {
 	numField := value.NumField()
 
 	length := 0
-	columns := make([]string, numField)
-	values := make([]any, numField)
+	columns := make([]string, 0)
+	values := make([]any, 0)
 	types := anyutil.Type(v)
 
 	for i := 0; i < numField; i++ {
@@ -72,8 +72,8 @@ func ColumnsNotNil(v any) ([]string, int, []any) {
 		}
 		structField := types.Field(i)
 		column := getColumn(structField)
-		columns[length] = column
-		values[length] = field.Interface()
+		columns = append(columns, column)
+		values = append(values, field.Interface())
 		length += 1
 	}
 

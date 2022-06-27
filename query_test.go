@@ -11,9 +11,12 @@ import (
 )
 
 type Users struct {
-	Id         int       `json:"id,omitempty"`
-	Name       string    `json:"name,omitempty"`
-	CreateTime time.Time `gorm:"column:createTime" json:"createTime"`
+	Id         uint      `json:"id,omitempty"`
+	Username   string    `json:"username,omitempty"`
+	Password   string    `json:"password,omitempty"`
+	Status     *uint     `json:"status,omitempty"`
+	CreateTime time.Time `json:"createTime"`
+	UpdateTime time.Time `json:"updateTime"`
 }
 
 func (u Users) TableName() string {
@@ -26,53 +29,6 @@ func (u Users) String() string {
 
 	}
 	return string(bytes)
-}
-
-func TestInsert(t *testing.T) {
-	db := connection()
-	m := Mapper[Users]{db}
-	u := Users{3, "insert", time.Now()}
-	err := m.Insert(u)
-	if err != nil {
-		t.Log(err)
-	}
-}
-
-func TestSelectById(t *testing.T) {
-	db := connection()
-	m := Mapper[Users]{db}
-	u, err := m.GetById(1)
-	if err != nil {
-		t.Log(err)
-	}
-	t.Log(u)
-}
-
-func TestUpdate(t *testing.T) {
-	db := connection()
-	m := Mapper[Users]{db}
-	u := Users{Id: 1, Name: "李四"}
-	err := m.UpdateById(u)
-	if err != nil {
-		t.Log(err)
-	}
-}
-
-func TestList(t *testing.T) {
-	db := connection()
-	m := Mapper[Users]{db}
-	list, err := m.List()
-	if err != nil {
-		t.Log(err)
-	}
-	t.Log(list)
-}
-
-func TestExec(t *testing.T) {
-	db := connection()
-	u := Users{}
-	db.Raw("select * from user limit 1").Scan(&u)
-	t.Log(u)
 }
 
 func connection() *gorm.DB {
@@ -92,11 +48,129 @@ func connection() *gorm.DB {
 	return db
 }
 
-func TestPage(t *testing.T) {
-	c := connection()
-	m := Mapper[Users]{c}
+func TestMapper_Insert(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
 
-	page, total, _ := m.Page(Page{Current: 1, PageSize: 1})
-	t.Log(page)
-	t.Log(total)
+	i := uint(0)
+
+	u := Users{
+		Username: "老八",
+		Password: "123456",
+		Status:   &i,
+	}
+	err := m.Insert(u)
+	if err != nil {
+		t.Log(err)
+	}
+}
+
+func TestMapper_DeleteById(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	err := m.DeleteById(1)
+	if err != nil {
+		t.Log(err)
+	}
+}
+
+func TestMapper_UpdateById(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	i := uint(1)
+
+	u := Users{Id: 2, Username: "王五2", Status: &i}
+	err := m.UpdateById(u)
+	if err != nil {
+		t.Log(err)
+	}
+}
+
+func TestMapper_GetById(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	user, err := m.GetById(2)
+	if err != nil {
+		t.Log(err)
+	}
+	t.Log(user)
+}
+
+func TestMapper_Get(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	u := Users{Id: 1, Username: "王五2"}
+	users, err := m.Get(u)
+	if err != nil {
+		t.Log(err)
+	} else {
+		t.Log(users)
+	}
+}
+
+func TestMapper_List(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	list, err := m.List()
+	if err != nil {
+		t.Log(err)
+	} else {
+		for i := range list {
+			t.Log(list[i])
+		}
+	}
+}
+
+func TestMapper_ListByCondition(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	i := uint(0)
+	u := Users{Status: &i}
+	list, err := m.ListByCondition(u)
+	if err != nil {
+		t.Log(err)
+	} else {
+		for i := range list {
+			t.Log(list[i])
+		}
+	}
+}
+
+func TestMapper_Page(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	page, i, err := m.Page(Page{Current: 1, PageSize: 2})
+	if err != nil {
+		t.Log(err)
+	} else {
+		t.Log(i)
+		for i2 := range page {
+			t.Log(page[i2])
+		}
+	}
+}
+
+func TestMapper_PageByCondition(t *testing.T) {
+	m := Mapper[Users]{}
+	m.SetDb(connection())
+
+	i := uint(0)
+	u := Users{Status: &i}
+
+	page, i2, err := m.PageByCondition(u, Page{1, 2})
+	if err != nil {
+		t.Log(err)
+	} else {
+		t.Log(i2)
+		for i3 := range page {
+			t.Log(page[i3])
+		}
+	}
 }
