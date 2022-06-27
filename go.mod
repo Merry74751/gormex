@@ -1,4 +1,4 @@
-module github.com/Merry74751/gorm-expand
+module github.com/Merry74751/gormex
 
 go 1.18
 
