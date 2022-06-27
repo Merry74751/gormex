@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Merry74751/yutool/anyutil"
 	"github.com/Merry74751/yutool/common"
+	"github.com/Merry74751/yutool/date"
 	"github.com/Merry74751/yutool/str"
 	"gorm.io/gorm"
 	"reflect"
@@ -177,14 +178,17 @@ func chooseColumn(name, tagColumn, expression string, index int, value any, db *
 func setInsertField(t any) {
 	v := anyutil.Value(t)
 	id := v.FieldByName("Id")
-	if (id != reflect.Value{}) {
+	if (id != reflect.Value{}) && id.CanSet() {
 		snowflakeID := uint(common.GetSnowflakeID())
-		value := reflect.ValueOf(snowflakeID)
-		id.Set(value)
+		id.Set(anyutil.Value(snowflakeID))
 	}
 
 	createTime := v.FieldByName("CreateTime")
-	if (createTime != reflect.Value{}) {
+	if (createTime != reflect.Value{}) && createTime.CanSet() {
+		if createTime.Type().String() == "date.LocalDateTime" {
+			createTime.Set(anyutil.Value(date.NewLocalDateTime()))
+			return
+		}
 		createTime.Set(anyutil.Value(time.Now()))
 	}
 }
@@ -193,7 +197,11 @@ func setUpdateField(t any) {
 	v := anyutil.Value(t)
 	updateTime := v.FieldByName("UpdateTime")
 
-	if (updateTime != reflect.Value{}) {
+	if (updateTime != reflect.Value{}) && updateTime.CanSet() {
+		if updateTime.Type().String() == "date.LocalDateTime" {
+			updateTime.Set(anyutil.Value(date.NewLocalDateTime()))
+			return
+		}
 		updateTime.Set(anyutil.Value(time.Now()))
 	}
 }
