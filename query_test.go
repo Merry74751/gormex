@@ -164,7 +164,7 @@ func TestMapper_PageByCondition(t *testing.T) {
 	i := uint(0)
 	u := Users{Status: &i}
 
-	page, i2, err := m.PageByCondition(u, Page{1, 2})
+	page, i2, err := m.PageByEntity(u, Page{1, 2})
 	if err != nil {
 		t.Log(err)
 	} else {

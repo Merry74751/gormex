@@ -47,12 +47,9 @@ func (m Mapper[T]) GetById(id any) (T, error) {
 
 func (m Mapper[T]) DeleteById(id any) error {
 	t := new(T)
-	return m.db.Where("id = ?", id).Delete(t).Error
-}
-
-func (m Mapper[T]) DeleteByIds(ids []any) error {
-	t := new(T)
-	return m.db.Where("id = ?", ids).Delete(t).Error
+	field := anyutil.StructField(t, 0)
+	column := getColumn(field)
+	return m.db.Where(column+"=?", id).Delete(t).Error
 }
 
 func (m Mapper[T]) UpdateById(t T) error {
@@ -109,7 +106,7 @@ func (m Mapper[T]) Page(page Page) ([]T, int64, error) {
 	return result, total, err
 }
 
-func (m Mapper[T]) PageByCondition(t T, page Page) ([]T, int64, error) {
+func (m Mapper[T]) PageByEntity(t T, page Page) ([]T, int64, error) {
 	v := new(T)
 
 	var total int64
@@ -121,6 +118,20 @@ func (m Mapper[T]) PageByCondition(t T, page Page) ([]T, int64, error) {
 	entityToCondition(t, tx)
 
 	var result []T
+	current := (page.Current - 1) * page.PageSize
+	err := tx.Offset(current).Limit(page.PageSize).Find(&result).Error
+	return result, total, err
+}
+
+func PageByCondition[T any](c any, page Page, db *gorm.DB) ([]T, int64, error) {
+	columns := Columns(new(T))
+	tx := db.Select(columns)
+	var result []T
+	var total int64
+
+	entityToCondition(c, tx)
+	tx.Model(c).Count(&total)
+
 	current := (page.Current - 1) * page.PageSize
 	err := tx.Offset(current).Limit(page.PageSize).Find(&result).Error
 	return result, total, err
@@ -141,8 +152,9 @@ func valueToCondition(v reflect.Value, db *gorm.DB) {
 		if field.IsZero() {
 			continue
 		}
-		if field.Kind() == reflect.Struct {
+		if field.Kind() == reflect.Struct && field.Type().String() != "date.LocalDateTime" {
 			valueToCondition(field, db)
+			continue
 		}
 		structField := typ.Field(i)
 		name := structField.Name
@@ -160,6 +172,11 @@ func valueToCondition(v reflect.Value, db *gorm.DB) {
 		} else if strings.HasSuffix(name, "LikeLeft") {
 			value := fmt.Sprint(field.Interface()) + "%"
 			chooseColumn(name, tagColumn, "like ?", 8, value, db)
+		} else if strings.HasSuffix(name, "START") {
+
+			chooseColumn(name, tagColumn, ">= ?", 5, field.Interface().(date.LocalDateTime).String(), db)
+		} else if strings.HasSuffix(name, "END") {
+			chooseColumn(name, tagColumn, "<= ?", 3, field.Interface().(date.LocalDateTime).String(), db)
 		} else {
 			chooseColumn(name, tagColumn, "= ?", 0, field.Interface(), db)
 		}
@@ -180,7 +197,8 @@ func setInsertField(t any) {
 	id := v.FieldByName("Id")
 	if (id != reflect.Value{}) && id.CanSet() {
 		snowflakeID := uint(common.GetSnowflakeID())
-		id.Set(anyutil.Value(snowflakeID))
+		value := reflect.ValueOf(snowflakeID)
+		id.Set(value)
 	}
 
 	createTime := v.FieldByName("CreateTime")
